@@ -1,3 +1,8 @@
+/**
+ * LocalTable: Provides a database-table-like API.
+ *
+ * @module localtable/table
+ */
 "use strict";
 
 import {
@@ -9,7 +14,11 @@ import {
     isFunction,
 } from "./validation.js";
 
+/**
+ * A class representing a table of similar rows.
+ */
 class LocalTable {
+    /** Mapping of field types to validation functions */
     fieldTypes = {
         "str": isString,
         "int": isInteger,
@@ -18,6 +27,7 @@ class LocalTable {
         "bool": isBool,
         "obj": null,
     };
+    /** The available lookup types for basic filtering */
     lookupTypes = [
         "=",
         ">",
@@ -26,7 +36,16 @@ class LocalTable {
         "<=",
         "!=",
     ];
+    /** The name of the `id` in a row's data */
+    idField = "id";
 
+    /**
+     * Creates a new `LocalTable` instance.
+     * @param {Storage} storage - Reference to the `Storage`-like object that
+     *     will keep the data.
+     * @param {string} tableName - The name of the table.
+     * @param {object} options - The options for instantiating the table.
+     */
     constructor(storage, tableName, options) {
         this.storage = storage;
         this.tableName = tableName;
@@ -80,6 +99,34 @@ class LocalTable {
         this._setIds();
     };
 
+    _serializeData(data) {
+        // We need to make a copy, so that we don't alter-by-reference the
+        // user's data.
+        const detailData = {};
+
+        for(const key of Object.keys(data)) {
+            if(key === this.idField) {
+                continue;
+            }
+
+            if(data.hasOwnProperty(key)) {
+                detailData[key] = data[key];
+            }
+        }
+
+        return JSON.stringify(detailData);
+    };
+
+    _deserializeData(id, data) {
+        const detailData = JSON.parse(data);
+        detailData[this.idField] = id;
+        return detailData;
+    };
+
+    /**
+     * Creates the table (if not already present).
+     * @return {null}
+     */
     create() {
         let listName = this._tableListName();
 
@@ -88,6 +135,10 @@ class LocalTable {
         };
     };
 
+    /**
+     * Drops the table & all rows from the storage.
+     * @return {null}
+     */
     drop() {
         // Delete all the detail records first.
         let allIds = this._getIds();
@@ -163,7 +214,7 @@ class LocalTable {
                 console.log(`Couldn't find detail data for ${actualName}! Skipping...`);
             }
 
-            const detailData = JSON.parse(rawData);
+            const detailData = this._deserializeData(id, rawData);
 
             if(filterBy !== undefined) {
                 if(! isFunction(filterBy)) {
@@ -185,15 +236,29 @@ class LocalTable {
         return allData;
     }
 
+    /**
+     * Returns all rows found in the table.
+     * @return {array} An array of objects for all the rows
+     */
     all() {
         return this._filter();
     };
 
+    /**
+     * Returns a count of the number of rows in the table.
+     * @return {integer} How many rows are in the table
+     */
     count() {
         let allIds = this._getIds();
         return allIds.length;
     };
 
+    /**
+     * Checks if a row is in the table.
+     * @param {any} id - The identifier of the row. Typically an integer, but can
+     *     be a string/UUID/etc.
+     * @return {boolean} True if present, else False.
+     */
     exists(id) {
         try {
             // This is a little wasteful, as we're parsing the data then just
@@ -205,6 +270,13 @@ class LocalTable {
         }
     };
 
+    /**
+     * Fetches a specific row from the table.
+     * @param {any} id - The identifier of the row. Typically an integer, but can
+     *     be a string/UUID/etc.
+     * @throws If the provided ID is not present in the table.
+     * @return {object} The detail data for the row
+     */
     get(id) {
         const actualName = this._detailName(id);
         let detailData = this.storage.getItem(actualName);
@@ -213,7 +285,7 @@ class LocalTable {
             throw new Error(`Couldn't find data for '${id}'.`);
         }
 
-        return JSON.parse(detailData);
+        return this._deserializeData(id, detailData);
     };
 
     _validate(data) {
@@ -263,6 +335,15 @@ class LocalTable {
         return errors;
     };
 
+    /**
+     * Inserts a new row into the table.
+     * @param {any} id - The identifier of the row. Typically an integer, but can
+     *     be a string/UUID/etc.
+     * @param {object} data - The field data for the row
+     * @throws If the id is already present in the table or the fields fail
+     *     to validate
+     * @return {null}
+     */
     insert(id, data) {
         if(this.exists(id)) {
             throw new Error(`Data is already present for '${id}'!`);
@@ -277,13 +358,22 @@ class LocalTable {
 
         // If we're good, update the storage.
         const actualName = this._detailName(id);
-        const actualData = JSON.stringify(data);
+        const actualData = this._serializeData(data);
         this.storage.setItem(actualName, actualData);
 
         // Then append it onto the list.
         this._pushNewId(id);
     };
 
+    /**
+     * Updates an existing row (or inserts a new row if not present) into the
+     * table.
+     * @param {any} id - The identifier of the row. Typically an integer, but can
+     *     be a string/UUID/etc.
+     * @param {object} data - The changed field data for the row
+     * @throws If the fields fail to validate
+     * @return {null}
+     */
     update(id, newData) {
         const actualName = this._detailName(id);
         let found = false;
@@ -310,7 +400,7 @@ class LocalTable {
         }
 
         // If we're good, update the storage.
-        const actualData = JSON.stringify(currentData);
+        const actualData = this._serializeData(currentData);
         this.storage.setItem(actualName, actualData);
 
         // Then, if new, append it onto the list.
@@ -319,6 +409,12 @@ class LocalTable {
         }
     };
 
+    /**
+     * Deletes a row from the table.
+     * @param {any} id - The identifier of the row. Typically an integer, but can
+     *     be a string/UUID/etc.
+     * @return {null}
+     */
     delete(id) {
         const actualName = this._detailName(id);
         this.storage.removeItem(actualName);
@@ -328,6 +424,13 @@ class LocalTable {
         this._setIds();
     };
 
+    /**
+     * Returns a filtered set of rows from the table.
+     * @param {object|function} filterBy - Either a plain object of filters
+     *     or a user-defined function to do the filtering.
+     * @throws If invalid fields or lookup types are provided
+     * @return {array} An array of objects of matched rows
+     */
     filter(filterBy) {
         return this._filter(filterBy);
     };
