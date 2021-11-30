@@ -1,7 +1,7 @@
 {
   "name": "localtable",
   "version": "1.0.0",
-  "description": "A thin NoSQL-like wrapper over `window.localStorage`.",
+  "description": "A thin database-like wrapper over `window.localStorage`.",
   "main": "src/index.js",
   "type": "module",
   "scripts": {

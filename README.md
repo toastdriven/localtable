@@ -1,6 +1,6 @@
 # localtable
 
-A thin NoSQL-like wrapper over `window.localStorage`.
+A thin database-like wrapper over `window.localStorage`.
 
 You create a table (or tables) to store many similar rows in, & `localtable`
 handles all the usual CRUD/database-style operations.
