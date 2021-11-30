@@ -110,6 +110,11 @@ performed. If a function is provided, it should take a single `data` parameter
 `npm test`
 
 
+## Generating Docs
+
+`jsdoc -r -d ~/Desktop/out --package package.json --readme README.md src`
+
+
 ## License
 
 New BSD

@@ -249,7 +249,9 @@ describe("LocalTable", function() {
             });
 
             assert.equal(filtered.length, 2);
+            assert.equal(filtered[0].id, 1);
             assert.equal(filtered[0].loginCount, 5);
+            assert.equal(filtered[1].id, 4);
             assert.equal(filtered[1].loginCount, 11);
         });
 
@@ -273,6 +275,7 @@ describe("LocalTable", function() {
             const filtered = table.filter((data) => data.firstName === "Jane");
 
             assert.equal(filtered.length, 1);
+            assert.equal(filtered[0].id, 2);
             assert.equal(filtered[0].firstName, "Jane");
             assert.equal(filtered[0].loginCount, 2);
         });
@@ -295,10 +298,12 @@ describe("LocalTable", function() {
 
             const row2 = table.get(2);
 
+            assert.equal(row2.id, 2);
             assert.equal(row2.message, "Bonjour");
 
             const row4 = table.get(4);
 
+            assert.equal(row4.id, 4);
             assert.equal(row4.message, "Guten tag");
         });
 
